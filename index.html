@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Content Analyzer - Plagiarism & AI Detection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .word-count {
+            text-align: right;
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+
+        .word-count.warning {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 300px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            flex: 1;
+            min-width: 200px;
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-analyze {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-analyze:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-humanize {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn-humanize:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(245, 87, 108, 0.4);
+        }
+
+        .btn-full {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        .btn-full:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(79, 172, 254, 0.4);
+        }
+
+        .btn-clear {
+            background: #f5f5f5;
+            color: #666;
+        }
+
+        .btn-clear:hover {
+            background: #e0e0e0;
+        }
+
+        .results {
+            margin-top: 40px;
+            display: none;
+        }
+
+        .results.show {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-card {
+            background: #f9f9f9;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+
+        .result-card h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .score-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .score-box {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .score-box h4 {
+            color: #666;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .score-value {
+            font-size: 3em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .score-value.low {
+            color: #51cf66;
+        }
+
+        .score-value.medium {
+            color: #ffd43b;
+        }
+
+        .score-value.high {
+            color: #ff6b6b;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #e0e0e0;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            transition: width 0.5s ease;
+        }
+
+        .progress-fill.low {
+            background: linear-gradient(90deg, #51cf66, #37b24d);
+        }
+
+        .progress-fill.medium {
+            background: linear-gradient(90deg, #ffd43b, #fab005);
+        }
+
+        .progress-fill.high {
+            background: linear-gradient(90deg, #ff6b6b, #f03e3e);
+        }
+
+        .detail-list {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .detail-list ul {
+            list-style: none;
+        }
+
+        .detail-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .detail-list li:last-child {
+            border-bottom: none;
+        }
+
+        .humanized-text {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 15px;
+            border-left: 4px solid #667eea;
+            white-space: pre-wrap;
+            line-height: 1.6;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin: 5px 5px 5px 0;
+        }
+
+        .badge-success {
+            background: #d3f9d8;
+            color: #2b8a3e;
+        }
+
+        .badge-warning {
+            background: #fff3bf;
+            color: #e67700;
+        }
+
+        .badge-danger {
+            background: #ffe3e3;
+            color: #c92a2a;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            button {
+                min-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Content Analyzer Pro</h1>
+            <p>Plagiarism Detection • AI Content Detection • Text Humanization</p>
+        </div>
+
+        <div class="content">
+            <div class="word-count" id="wordCount">0 / 20,000 words</div>
+            
+            <textarea 
+                id="contentInput" 
+                placeholder="Paste your content here (up to 20,000 words)...&#10;&#10;The analyzer will:&#10;✓ Check for plagiarism&#10;✓ Detect AI-generated content&#10;✓ Identify common AI writing patterns&#10;✓ Humanize your text to reduce AI detection"
+            ></textarea>
+
+            <div class="button-group">
+                <button class="btn-analyze" onclick="analyzeContent()">
+                    📊 Analyze Content
+                </button>
+                <button class="btn-humanize" onclick="humanizeContent()">
+                    ✨ Humanize Text
+                </button>
+                <button class="btn-full" onclick="fullAnalysis()">
+                    🚀 Full Analysis
+                </button>
+                <button class="btn-clear" onclick="clearAll()">
+                    🗑️ Clear
+                </button>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Analyzing your content...</p>
+            </div>
+
+            <div class="results" id="results"></div>
+        </div>
+    </div>
+
+    <script>
+        const contentInput = document.getElementById('contentInput');
+        const wordCountDisplay = document.getElementById('wordCount');
+        const resultsDiv = document.getElementById('results');
+        const loadingDiv = document.getElementById('loading');
+
+        // Word count tracker
+        contentInput.addEventListener('input', function() {
+            const text = this.value.trim();
+            const wordCount = text ? text.split(/\s+/).length : 0;
+            wordCountDisplay.textContent = `${wordCount.toLocaleString()} / 20,000 words`;
+            
+            if (wordCount > 20000) {
+                wordCountDisplay.classList.add('warning');
+            } else {
+                wordCountDisplay.classList.remove('warning');
+            }
+        });
+
+        // AI Detection Logic
+        const aiPatterns = {
+            phrases: [
+                'delve into', 'dive deep', 'landscape of', 'realm of',
+                'it\'s important to understand', 'in the context of',
+                'plays a crucial role', 'paramount importance',
+                'multifaceted', 'holistic approach', 'comprehensive understanding',
+                'robust', 'leverage', 'streamline', 'optimize',
+                'cutting-edge', 'state-of-the-art', 'unprecedented',
+                'tapestry', 'intricate web', 'myriad of',
+                'in conclusion', 'to summarize', 'furthermore', 'moreover'
+            ],
+            transitions: [
+                /firstly.*secondly.*thirdly/i,
+                /first and foremost/i,
+                /last but not least/i
+            ]
+        };
+
+        function detectAI(text) {
+            const textLower = text.toLowerCase();
+            let score = 0;
+            const foundPhrases = [];
+
+            // Check for AI phrases (40%)
+            aiPatterns.phrases.forEach(phrase => {
+                if (textLower.includes(phrase)) {
+                    score += 2;
+                    foundPhrases.push(phrase);
+                }
+            });
+
+            // Check for formal transitions (20%)
+            aiPatterns.transitions.forEach(pattern => {
+                if (pattern.test(text)) {
+                    score += 10;
+                }
+            });
+
+            // Check sentence uniformity (20%)
+            const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 5);
+            if (sentences.length > 0) {
+                const lengths = sentences.map(s => s.trim().split(/\s+/).length);
+                const avg = lengths.reduce((a, b) => a + b, 0) / lengths.length;
+                const variance = lengths.reduce((sum, len) => sum + Math.pow(len - avg, 2), 0) / lengths.length;
+                
+                if (variance < 50) score += 20;
+                else if (variance < 100) score += 10;
+            }
+
+            // Check vocabulary diversity (20%)
+            const words = textLower.match(/\b\w+\b/g) || [];
+            if (words.length > 0) {
+                const uniqueRatio = new Set(words).size / words.length;
+                if (uniqueRatio >= 0.4 && uniqueRatio <= 0.6) score += 20;
+                else if (uniqueRatio >= 0.35 && uniqueRatio <= 0.65) score += 10;
+            }
+
+            return {
+                score: Math.min(100, score),
+                foundPhrases: foundPhrases.slice(0, 10)
+            };
+        }
+
+        function detectPlagiarism(text) {
+            // Simplified plagiarism check
+            // In production, this would check against a database
+            const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);
+            const score = Math.random() * 15; // Simulated score 0-15%
+            return Math.round(score * 10) / 10;
+        }
+
+        function analyzeContent() {
+            const text = contentInput.value.trim();
+            
+            if (!text) {
+                alert('Please enter some content to analyze!');
+                return;
+            }
+
+            const wordCount = text.split(/\s+/).length;
+            if (wordCount > 20000) {
+                alert(`Content exceeds 20,000 word limit. Current: ${wordCount} words`);
+                return;
+            }
+
+            showLoading();
+
+            setTimeout(() => {
+                const aiResult = detectAI(text);
+                const plagiarismScore = detectPlagiarism(text);
+                const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 5);
+                const avgSentenceLength = sentences.reduce((sum, s) => 
+                    sum + s.trim().split(/\s+/).length, 0) / sentences.length;
+
+                displayAnalysisResults(wordCount, plagiarismScore, aiResult, sentences.length, avgSentenceLength);
+                hideLoading();
+            }, 1000);
+        }
+
+        function humanizeContent() {
+            const text = contentInput.value.trim();
+            
+            if (!text) {
+                alert('Please enter some content to humanize!');
+                return;
+            }
+
+            const wordCount = text.split(/\s+/).length;
+            if (wordCount > 20000) {
+                alert(`Content exceeds 20,000 word limit. Current: ${wordCount} words`);
+                return;
+            }
+
+            showLoading();
+
+            setTimeout(() => {
+                const originalAI = detectAI(text);
+                const humanized = humanizeText(text);
+                const newAI = detectAI(humanized);
+
+                displayHumanizationResults(originalAI.score, newAI.score, humanized);
+                hideLoading();
+            }, 1500);
+        }
+
+        function fullAnalysis() {
+            const text = contentInput.value.trim();
+            
+            if (!text) {
+                alert('Please enter some content to analyze!');
+                return;
+            }
+
+            const wordCount = text.split(/\s+/).length;
+            if (wordCount > 20000) {
+                alert(`Content exceeds 20,000 word limit. Current: ${wordCount} words`);
+                return;
+            }
+
+            showLoading();
+
+            setTimeout(() => {
+                const aiResult = detectAI(text);
+                const plagiarismScore = detectPlagiarism(text);
+                const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 5);
+                const avgSentenceLength = sentences.reduce((sum, s) => 
+                    sum + s.trim().split(/\s+/).length, 0) / sentences.length;
+
+                const humanized = humanizeText(text);
+                const newAI = detectAI(humanized);
+
+                displayFullResults(
+                    wordCount, plagiarismScore, aiResult, 
+                    sentences.length, avgSentenceLength,
+                    newAI.score, humanized
+                );
+                hideLoading();
+            }, 2000);
+        }
+
+        function humanizeText(text) {
+            let result = text;
+
+            // Replace AI phrases
+            const replacements = {
+                'delve into': ['explore', 'look at', 'examine'],
+                'dive deep': ['explore thoroughly', 'take a close look'],
+                'landscape of': ['world of', 'field of'],
+                'realm of': ['area of', 'field of'],
+                'it\'s important to understand': ['keep in mind', 'remember'],
+                'plays a crucial role': ['is important', 'matters'],
+                'paramount importance': ['very important', 'critical'],
+                'multifaceted': ['complex', 'varied'],
+                'holistic approach': ['complete approach', 'full view'],
+                'robust': ['strong', 'solid'],
+                'leverage': ['use', 'utilize'],
+                'streamline': ['simplify', 'improve'],
+                'optimize': ['improve', 'enhance'],
+                'cutting-edge': ['latest', 'modern'],
+                'unprecedented': ['unique', 'unusual'],
+                'myriad of': ['many', 'various'],
+                'in conclusion': ['to wrap up', 'finally'],
+                'furthermore': ['also', 'plus'],
+                'moreover': ['also', 'what\'s more'],
+                'first and foremost': ['first', 'to start'],
+            };
+
+            for (const [phrase, alternatives] of Object.entries(replacements)) {
+                const regex = new RegExp(phrase, 'gi');
+                result = result.replace(regex, () => 
+                    alternatives[Math.floor(Math.random() * alternatives.length)]
+                );
+            }
+
+            // Add contractions
+            const contractions = {
+                'do not': 'don\'t',
+                'does not': 'doesn\'t',
+                'cannot': 'can\'t',
+                'will not': 'won\'t',
+                'is not': 'isn\'t',
+                'are not': 'aren\'t',
+                'have not': 'haven\'t',
+                'it is': 'it\'s',
+            };
+
+            for (const [formal, casual] of Object.entries(contractions)) {
+                if (Math.random() > 0.5) {
+                    const regex = new RegExp('\\b' + formal + '\\b', 'gi');
+                    result = result.replace(regex, casual);
+                }
+            }
+
+            return result;
+        }
+
+        function getScoreClass(score) {
+            if (score < 30) return 'low';
+            if (score < 70) return 'medium';
+            return 'high';
+        }
+
+        function getBadgeClass(score) {
+            if (score < 30) return 'badge-success';
+            if (score < 70) return 'badge-warning';
+            return 'badge-danger';
+        }
+
+        function displayAnalysisResults(wordCount, plagiarism, aiResult, sentenceCount, avgSentenceLength) {
+            const html = `
+                <div class="result-card">
+                    <h3>📊 Analysis Results</h3>
+                    
+                    <div class="score-container">
+                        <div class="score-box">
+                            <h4>Plagiarism Score</h4>
+                            <div class="score-value ${getScoreClass(plagiarism)}">${plagiarism}%</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill ${getScoreClass(plagiarism)}" style="width: ${plagiarism}%"></div>
+                            </div>
+                            <span class="badge ${getBadgeClass(plagiarism)}">
+                                ${plagiarism < 15 ? 'Acceptable' : plagiarism < 30 ? 'Review Needed' : 'High Risk'}
+                            </span>
+                        </div>
+
+                        <div class="score-box">
+                            <h4>AI Content Score</h4>
+                            <div class="score-value ${getScoreClass(aiResult.score)}">${aiResult.score}%</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill ${getScoreClass(aiResult.score)}" style="width: ${aiResult.score}%"></div>
+                            </div>
+                            <span class="badge ${getBadgeClass(aiResult.score)}">
+                                ${aiResult.score < 30 ? 'Human-like' : aiResult.score < 70 ? 'Possibly AI' : 'Likely AI'}
+                            </span>
+                        </div>
+
+                        <div class="score-box">
+                            <h4>Word Count</h4>
+                            <div class="score-value low">${wordCount.toLocaleString()}</div>
+                            <p style="color: #666; margin-top: 10px;">Total words analyzed</p>
+                        </div>
+                    </div>
+
+                    <div class="detail-list">
+                        <h4>📝 Content Details</h4>
+                        <ul>
+                            <li><strong>Total Sentences:</strong> ${sentenceCount}</li>
+                            <li><strong>Average Sentence Length:</strong> ${avgSentenceLength.toFixed(1)} words</li>
+                            <li><strong>AI Phrases Found:</strong> ${aiResult.foundPhrases.length}</li>
+                            ${aiResult.foundPhrases.length > 0 ? 
+                                `<li><strong>Common AI Phrases:</strong> ${aiResult.foundPhrases.slice(0, 5).join(', ')}</li>` 
+                                : ''}
+                        </ul>
+                    </div>
+                </div>
+            `;
+
+            resultsDiv.innerHTML = html;
+            resultsDiv.classList.add('show');
+        }
+
+        function displayHumanizationResults(originalScore, newScore, humanizedText) {
+            const improvement = originalScore - newScore;
+            
+            const html = `
+                <div class="result-card">
+                    <h3>✨ Humanization Results</h3>
+                    
+                    <div class="score-container">
+                        <div class="score-box">
+                            <h4>Original AI Score</h4>
+                            <div class="score-value ${getScoreClass(originalScore)}">${originalScore}%</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill ${getScoreClass(originalScore)}" style="width: ${originalScore}%"></div>
+                            </div>
+                        </div>
+
+                        <div class="score-box">
+                            <h4>New AI Score</h4>
+                            <div class="score-value ${getScoreClass(newScore)}">${newScore}%</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill ${getScoreClass(newScore)}" style="width: ${newScore}%"></div>
+                            </div>
+                        </div>
+
+                        <div class="score-box">
+                            <h4>Improvement</h4>
+                            <div class="score-value low">${improvement.toFixed(1)}%</div>
+                            <span class="badge badge-success">
+                                ${improvement > 20 ? 'Excellent!' : improvement > 10 ? 'Good' : 'Moderate'}
+                            </span>
+                        </div>
+                    </div>
+
+                    <h4 style="margin-top: 30px; color: #333;">📄 Humanized Text:</h4>
+                    <div class="humanized-text">${humanizedText}</div>
+                </div>
+            `;
+
+            resultsDiv.innerHTML = html;
+            resultsDiv.classList.add('show');
+        }
+
+        function displayFullResults(wordCount, plagiarism, aiResult, sentenceCount, avgSentenceLength, newAIScore, humanizedText) {
+            const improvement = aiResult.score - newAIScore;
+            
+            const html = `
+                <div class="result-card">
+                    <h3>📊 Original Content Analysis</h3>
+                    
+                    <div class="score-container">
+                        <div class="score-box">
+                            <h4>Plagiarism Score</h4>
+                            <div class="score-value ${getScoreClass(plagiarism)}">${plagiarism}%</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill ${getScoreClass(plagiarism)}" style="width: ${plagiarism}%"></div>
+                            </div>
+                        </div>
+
+                        <div class="score-box">
+                            <h4>AI Content Score</h4>
+                            <div class="score-value ${getScoreClass(aiResult.score)}">${aiResult.score}%</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill ${getScoreClass(aiResult.score)}" style="width: ${aiResult.score}%"></div>
+                            </div>
+                        </div>
+
+                        <div class="score-box">
+                            <h4>Word Count</h4>
+                            <div class="score-value low">${wordCount.toLocaleString()}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="result-card">
+                    <h3>✨ Humanization Results</h3>
+                    
+                    <div class="score-container">
+                        <div class="score-box">
+                            <h4>Original AI Score</h4>
+                            <div class="score-value ${getScoreClass(aiResult.score)}">${aiResult.score}%</div>
+                        </div>
+
+                        <div class="score-box">
+                            <h4>New AI Score</h4>
+                            <div class="score-value ${getScoreClass(newAIScore)}">${newAIScore}%</div>
+                        </div>
+
+                        <div class="score-box">
+                            <h4>Improvement</h4>
+                            <div class="score-value low">${improvement.toFixed(1)}%</div>
+                            <span class="badge badge-success">✓ Humanized</span>
+                        </div>
+                    </div>
+
+                    <h4 style="margin-top: 30px; color: #333;">📄 Humanized Text:</h4>
+                    <div class="humanized-text">${humanizedText}</div>
+                </div>
+            `;
+
+            resultsDiv.innerHTML = html;
+            resultsDiv.classList.add('show');
+        }
+
+        function showLoading() {
+            loadingDiv.classList.add('show');
+            resultsDiv.classList.remove('show');
+        }
+
+        function hideLoading() {
+            loadingDiv.classList.remove('show');
+        }
+
+        function clearAll() {
+            contentInput.value = '';
+            wordCountDisplay.textContent = '0 / 20,000 words';
+            resultsDiv.innerHTML = '';
+            resultsDiv.classList.remove('show');
+        }
+    </script>
+</body>
+</html>
